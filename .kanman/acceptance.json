@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "provision": {
+    "type": "docker_compose",
+    "file": "docker-compose.acceptance.yml",
+    "up": "docker compose -f docker-compose.acceptance.yml up -d --build --wait",
+    "down": "docker compose -f docker-compose.acceptance.yml down -v"
+  },
+  "ready_url": "http://localhost:3000/api/invoices",
+  "ready_timeout_seconds": 120,
+  "setup": "npm ci && npx playwright install --with-deps chromium",
+  "run": {
+    "command": "npx playwright test",
+    "spec_arg": ".kanman/acceptance/{KEY}/",
+    "env": {
+      "BASE_URL": "http://localhost:3000"
+    }
+  },
+  "spec_dir": ".kanman/acceptance/{KEY}",
+  "artifacts": [
+    "test-results/**/trace.zip",
+    "test-results/**/*.png",
+    "test-results/**/*.webm",
+    "test-results/results.json",
+    "playwright-report/**"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "cwd": ".",
+  "setup": "npm ci",
+  "command": "npm run lint && npm run typecheck && npm test",
+  "env": {
+    "CI": "true"
+  },
+  "ci_var_keys": []
+}

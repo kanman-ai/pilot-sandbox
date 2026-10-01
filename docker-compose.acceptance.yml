@@ -1,0 +1,16 @@
+# Ephemeral environment for acceptance specs. kanman and CI start it with:
+#   docker compose -f docker-compose.acceptance.yml up -d --build --wait
+# and stop it with:
+#   docker compose -f docker-compose.acceptance.yml down -v
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/invoices').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
