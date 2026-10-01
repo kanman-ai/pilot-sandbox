@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  acceptance:
+    name: Acceptance specs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Start the app
+        run: docker compose -f docker-compose.acceptance.yml up -d --build --wait
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run all specs under .kanman/acceptance
+        run: npx playwright test
+        env:
+          BASE_URL: http://localhost:3000
+      - name: App logs
+        if: failure()
+        run: docker compose -f docker-compose.acceptance.yml logs
+      - name: Upload proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-artifacts
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
+      - name: Stop the app
+        if: always()
+        run: docker compose -f docker-compose.acceptance.yml down -v
