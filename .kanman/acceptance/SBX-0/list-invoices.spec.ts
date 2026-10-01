@@ -1,5 +1,5 @@
 /**
- * SBX-1: List invoices.
+ * SBX-0: List invoices.
  *
  * Demonstrate: open the invoice list, see all seeded invoices newest first,
  * filter by status "Paid" and see only paid invoices. Open one and see its total.

@@ -10,7 +10,7 @@ Each story gets its own folder named after its key:
 .kanman/acceptance/<KEY>/<name>.spec.ts
 ```
 
-For example `.kanman/acceptance/SBX-1/list-invoices.spec.ts`.
+For example `.kanman/acceptance/SBX-0/list-invoices.spec.ts`.
 
 ## Who writes them
 
@@ -30,7 +30,7 @@ Start the app, then run one story or all of them:
 
 ```
 docker compose -f docker-compose.acceptance.yml up -d --build --wait
-npx playwright test .kanman/acceptance/SBX-1/
+npx playwright test .kanman/acceptance/SBX-0/
 npx playwright test
 docker compose -f docker-compose.acceptance.yml down -v
 ```
