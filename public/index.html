@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Invoices</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Invoices</h1>
+        <label>
+          Status
+          <select id="status-filter" name="status">
+            <option value="">All</option>
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="paid">Paid</option>
+          </select>
+        </label>
+      </header>
+      <table aria-label="Invoices">
+        <thead>
+          <tr>
+            <th scope="col">Number</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Issued</th>
+            <th scope="col">Due</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="amount">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="invoice-rows"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" id="invoice-count"></td>
+            <td class="amount" id="invoice-sum"></td>
+          </tr>
+        </tfoot>
+      </table>
+      <p id="error" role="alert" hidden></p>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
