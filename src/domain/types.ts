@@ -27,6 +27,8 @@ export interface Invoice {
   dueDate: string
   currency: string
   status: InvoiceStatus
+  /** ISO date, YYYY-MM-DD. Set when the invoice is marked as paid. */
+  paidDate?: string
   lines: InvoiceLine[]
 }
 

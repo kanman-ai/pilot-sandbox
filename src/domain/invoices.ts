@@ -1,4 +1,4 @@
-/** Pure invoice logic: totals, filtering and validation. */
+/** Pure invoice logic: totals, filtering, validation and status changes. */
 import { compareIsoDates, isIsoDate } from '../lib/dates.js'
 import type { Invoice, InvoiceFilter, InvoiceLine, NewInvoice } from './types.js'
 
@@ -36,4 +36,17 @@ export function validateNewInvoice(input: NewInvoice): string[] {
   }
   if (input.lines.length === 0) problems.push('an invoice needs at least one line')
   return problems
+}
+
+export type MarkPaidResult = { ok: true; invoice: Invoice } | { ok: false; error: string }
+
+/** Marks a sent invoice as paid on the given date. Drafts and paid invoices are refused. */
+export function markInvoicePaid(invoice: Invoice, paidDate: string): MarkPaidResult {
+  if (invoice.status === 'paid') {
+    return { ok: false, error: `Invoice ${invoice.number} is already paid` }
+  }
+  if (invoice.status !== 'sent') {
+    return { ok: false, error: `Invoice ${invoice.number} is a ${invoice.status}; only sent invoices can be marked as paid` }
+  }
+  return { ok: true, invoice: { ...invoice, status: 'paid', paidDate } }
 }

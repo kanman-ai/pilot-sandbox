@@ -13,3 +13,10 @@ export function isIsoDate(value: string): boolean {
 export function compareIsoDates(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0
 }
+
+/** The calendar date of a moment in local time, as YYYY-MM-DD. */
+export function toIsoDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}

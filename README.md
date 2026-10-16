@@ -21,6 +21,7 @@ kanman is an AI teammate. It takes stories from your tracker, writes an acceptan
 | GET | `/api/invoices` | Filters: `status` (draft, sent, paid), `customerId`. Newest first. |
 | GET | `/api/invoices/:id` | 404 if not found. |
 | POST | `/api/invoices` | Creates a draft. Body: `customerId`, `issueDate`, `dueDate`, `lines[]`. |
+| POST | `/api/invoices/:id/mark-paid` | Marks a sent invoice as paid and sets `paidDate` to today. 404 if not found, 409 if it is a draft or already paid. |
 | GET | `/api/customers` | All customers. |
 
 Amounts are integer cents. The shared money formatter is `formatMoney` in `src/lib/money.ts`.

@@ -31,6 +31,14 @@ export class InvoiceStore {
     return this.invoices.find((invoice) => invoice.id === id)
   }
 
+  /** Replaces the stored invoice with the same id. Returns false if there is none. */
+  updateInvoice(invoice: Invoice): boolean {
+    const index = this.invoices.findIndex((existing) => existing.id === invoice.id)
+    if (index === -1) return false
+    this.invoices[index] = structuredClone(invoice)
+    return true
+  }
+
   createInvoice(input: NewInvoice): Invoice {
     const year = Number(input.issueDate.slice(0, 4))
     const invoice: Invoice = {
