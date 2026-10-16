@@ -14,6 +14,7 @@ import {
 import {
   invoiceAmounts,
   invoiceStatusOn,
+  lateFeeAmount,
   markInvoicePaid,
   sendInvoiceReminder,
   setInvoiceDiscount,
@@ -93,14 +94,17 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
    * Adds the customer name and the amounts to an invoice for API responses.
    * status is the shown status: a sent invoice due before today is 'overdue' (never stored).
    * discountPercent is always present: a number, or null when the invoice has no discount.
-   * total is the amount payable, after the discount.
+   * total is the amount payable, after the discount. lateFee is the one-time late fee of an overdue
+   * invoice (0 otherwise) and totalDue is total + lateFee.
    * lastReminderSentAt is always present: an ISO timestamp, or null when no reminder was sent.
    */
   function toView(invoice: Invoice, day = today()) {
     const { subtotal, discountPercent, discountAmount, total } = invoiceAmounts(invoice)
+    const status = invoiceStatusOn(invoice, day)
+    const lateFee = lateFeeAmount(total, status)
     return {
       ...invoice,
-      status: invoiceStatusOn(invoice, day),
+      status,
       customerName: store.getCustomer(invoice.customerId)?.name ?? 'Unknown customer',
       lines: invoice.lines.map((line) => ({
         ...line,
@@ -113,6 +117,10 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
       discountAmountFormatted: formatMoney(discountAmount, invoice.currency),
       total,
       totalFormatted: formatMoney(total, invoice.currency),
+      lateFee,
+      lateFeeFormatted: formatMoney(lateFee, invoice.currency),
+      totalDue: total + lateFee,
+      totalDueFormatted: formatMoney(total + lateFee, invoice.currency),
       lastReminderSentAt: invoice.lastReminderSentAt ?? null,
     }
   }

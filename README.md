@@ -37,6 +37,7 @@ Invoice views (list rows, `GET /api/invoices/:id` and the create, PATCH, mark-pa
 - `subtotal` (sum of the lines), `discountPercent` (number, or `null` without a discount), `discountAmount` and `total` (subtotal minus discount), plus `subtotalFormatted`, `discountAmountFormatted` and `totalFormatted`.
 - The discount is subtotal × percent / 100, rounded half-up to the cent.
 - Totals in the list rows, the list `summary` and the CSV `total` column are the discounted totals.
+- `lateFee`, `lateFeeFormatted`, `totalDue` (`total` + `lateFee`) and `totalDueFormatted`.
 - `lastReminderSentAt`: ISO timestamp of the last reminder sent with `send-reminder`, or `null` when none was sent.
 
 ## Overdue invoices
@@ -44,6 +45,10 @@ Invoice views (list rows, `GET /api/invoices/:id` and the create, PATCH, mark-pa
 A sent invoice whose `dueDate` is before today (the server's local date) has the status `overdue` wherever invoices are returned: list rows, `GET /api/invoices/:id`, the create, PATCH and mark-paid responses, and the `status` column of both CSV exports. The stored status stays `draft`, `sent` or `paid`; `overdue` is worked out each time an invoice is returned, so an invoice due today is still `sent`. Drafts and paid invoices never become overdue. Filter with `GET /api/invoices?status=overdue`. An overdue invoice can be marked as paid like a sent one, and the invoice page shows its **Mark as paid** button. Only an overdue invoice can get a payment reminder: the invoice page shows a **Send reminder** button for it, and once one is sent the page shows **Reminder sent** with its date.
 
 On the invoice list, overdue rows show a red **Overdue** badge (white text on `#b91c1c`) in the Status column instead of the plain status text; other rows show their status as before.
+
+## Late fee
+
+An overdue invoice (see above) has a one-time late fee of 5% (`LATE_FEE_PERCENT` in `src/domain/invoices.ts`) of its discounted `total`, rounded half-up to the cent: `lateFee`. It is applied once and does not grow with the days overdue. Every other invoice has `lateFee` 0. `totalDue` is `total` + `lateFee`; `total`, the list `summary` and both CSV exports leave the fee out. The invoice page shows **Late fee** and **Total due** only when there is a late fee.
 
 ## CSV export
 
