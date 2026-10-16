@@ -41,6 +41,8 @@ Invoice views (list rows, `GET /api/invoices/:id` and the create, PATCH and mark
 
 A sent invoice whose `dueDate` is before today (the server's local date) has the status `overdue` wherever invoices are returned: list rows, `GET /api/invoices/:id`, the create, PATCH and mark-paid responses, and the `status` column of both CSV exports. The stored status stays `draft`, `sent` or `paid`; `overdue` is worked out each time an invoice is returned, so an invoice due today is still `sent`. Drafts and paid invoices never become overdue. Filter with `GET /api/invoices?status=overdue`. An overdue invoice can be marked as paid like a sent one, and the invoice page shows its **Mark as paid** button.
 
+On the invoice list, overdue rows show a red **Overdue** badge (white text on `#b91c1c`) in the Status column instead of the plain status text; other rows show their status as before.
+
 ## CSV export
 
 `GET /api/invoices.csv` returns every invoice as a CSV download named `invoices.csv` (`text/csv; charset=utf-8`), newest first like `GET /api/invoices`, with no filters. The header is `id,customer,total,status`; `customer` is the customer name, `total` is the discounted total as a plain decimal like `720.50`. Lines end with CRLF, values with a comma, quote or line break are quoted, and text that starts with `=`, `+`, `-` or `@` is prefixed with `'` so spreadsheets do not run it as a formula.
