@@ -131,7 +131,8 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
     // All invoices as a simple CSV, in the same order as GET /api/invoices. A different path from
     // /api/invoices/:id (no slash before .csv), so the parametric route never sees it.
     app.get('/api/invoices.csv', async (_request, reply) => {
-      const csv = buildSimpleInvoicesCsv(store.listInvoices(), (id) => store.getCustomer(id)?.name ?? 'Unknown customer')
+      const customerName = (id: string) => store.getCustomer(id)?.name ?? 'Unknown customer'
+      const csv = buildSimpleInvoicesCsv(store.listInvoices(), customerName, today())
       return reply
         .header('content-type', 'text/csv; charset=utf-8')
         .header('content-disposition', 'attachment; filename="invoices.csv"')

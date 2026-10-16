@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../src/app.js'
 import { InvoiceStore } from '../src/data/store.js'
 import { seedCustomers, seedInvoices } from '../src/data/seed.js'
-import { buildInvoicesCsv } from '../src/domain/csv.js'
+import { buildInvoicesCsv, buildSimpleInvoicesCsv } from '../src/domain/csv.js'
 import { filterInvoices, invoiceStatusOn } from '../src/domain/invoices.js'
 import type { Invoice } from '../src/domain/types.js'
 
@@ -50,6 +50,11 @@ describe('buildInvoicesCsv with today', () => {
   it('writes the shown status in the status column', () => {
     const lines = buildInvoicesCsv(fixtures, () => 'Acme', TODAY).trimEnd().split('\r\n')
     expect(lines.slice(1).map((line) => line.split(',')[4])).toEqual(['overdue', 'sent', 'draft', 'paid'])
+  })
+
+  it('writes the shown status in the status column of the simple CSV', () => {
+    const lines = buildSimpleInvoicesCsv(fixtures, () => 'Acme', TODAY).trimEnd().split('\r\n')
+    expect(lines.slice(1).map((line) => line.split(',')[3])).toEqual(['overdue', 'sent', 'draft', 'paid'])
   })
 })
 
@@ -131,5 +136,12 @@ describe('overdue status in the API (clock fixed at 2026-10-16)', () => {
       'number,customer,issue_date,due_date,status,total,currency\r\n' +
       'INV-2026-0005,Acme Logistics GmbH,2026-05-20,2026-06-19,overdue,3949.99,EUR\r\n',
     )
+  })
+
+  it('writes overdue in the status column of /api/invoices.csv', async () => {
+    const rows = (await get('/api/invoices.csv')).body.trimEnd().split('\r\n').slice(1)
+    expect(rows).toContain('inv_005,Acme Logistics GmbH,3949.99,overdue')
+    expect(rows).toContain('inv_0902,Acme Logistics GmbH,1.00,sent')
+    expect(rows).toContain('inv_003,Nordlicht Studio,720.50,paid')
   })
 })

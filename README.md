@@ -18,13 +18,13 @@ kanman is an AI teammate. It takes stories from your tracker, writes an acceptan
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/invoices` | Filters: `status` (draft, sent, paid), `customerId`. Newest first. |
+| GET | `/api/invoices` | Filters: `status` (draft, sent, overdue, paid), `customerId`. `status` matches the shown status, so `sent` lists only sent invoices not yet due and `overdue` only those past due. Newest first. |
 | GET | `/api/invoices.csv` | CSV download (`invoices.csv`) of all invoices, in the same order as `GET /api/invoices`. Columns: `id,customer,total,status`. See [CSV export](#csv-export). |
 | GET | `/api/invoices/export.csv` | Query: `from`, `to` (YYYY-MM-DD, both required, both days included). CSV download of invoices issued in that range, newest first. Columns: `number,customer,issue_date,due_date,status,total,currency`; `total` is a plain decimal like `720.50`. 400 with an `error` message if a date is missing, malformed or impossible, or `from` is after `to`. |
 | GET | `/api/invoices/:id` | 404 if not found. |
 | POST | `/api/invoices` | Creates a draft. Body: `customerId`, `issueDate`, `dueDate`, `lines[]`, optional `discountPercent` (0–100, at most two decimals). |
 | PATCH | `/api/invoices/:id` | Sets the discount of a draft. Body: `{ discountPercent: number \| null }`; `null` removes the discount. 200 with the updated invoice. 404 if not found, 409 if it is sent or paid (the invoice stays unchanged), 422 with `{ error: "Invalid discount", problems }` for an invalid value. |
-| POST | `/api/invoices/:id/mark-paid` | Marks a sent invoice as paid and sets `paidDate` to today. 404 if not found, 409 if it is a draft or already paid. |
+| POST | `/api/invoices/:id/mark-paid` | Marks a sent or overdue invoice as paid and sets `paidDate` to today. 404 if not found, 409 if it is a draft or already paid. |
 | GET | `/api/customers` | All customers. |
 | GET | `/api/customers/:id` | One customer, same shape as an entry of `/api/customers`. 404 with `{ error: "Customer <id> not found" }` if not found. |
 | GET | `/health` | `{ status, version, uptimeSeconds }`. Not logged. Used by the container health check. |
@@ -36,6 +36,10 @@ Invoice views (list rows, `GET /api/invoices/:id` and the create, PATCH and mark
 - `subtotal` (sum of the lines), `discountPercent` (number, or `null` without a discount), `discountAmount` and `total` (subtotal minus discount), plus `subtotalFormatted`, `discountAmountFormatted` and `totalFormatted`.
 - The discount is subtotal × percent / 100, rounded half-up to the cent.
 - Totals in the list rows, the list `summary` and the CSV `total` column are the discounted totals.
+
+## Overdue invoices
+
+A sent invoice whose `dueDate` is before today (the server's local date) has the status `overdue` wherever invoices are returned: list rows, `GET /api/invoices/:id`, the create, PATCH and mark-paid responses, and the `status` column of both CSV exports. The stored status stays `draft`, `sent` or `paid`; `overdue` is worked out each time an invoice is returned, so an invoice due today is still `sent`. Drafts and paid invoices never become overdue. Filter with `GET /api/invoices?status=overdue`. An overdue invoice can be marked as paid like a sent one, and the invoice page shows its **Mark as paid** button.
 
 ## CSV export
 
