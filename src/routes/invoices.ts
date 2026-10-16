@@ -4,7 +4,7 @@ import type { InvoiceStore } from '../data/store.js'
 import { invoiceTotal, markInvoicePaid, validateNewInvoice } from '../domain/invoices.js'
 import { INVOICE_STATUSES, type Invoice, type InvoiceFilter, type NewInvoice } from '../domain/types.js'
 import { toIsoDate } from '../lib/dates.js'
-import { formatMoney } from '../lib/money.js'
+import { centsToDecimal, formatMoney } from '../lib/money.js'
 
 const lineSchema = {
   type: 'object',
@@ -57,6 +57,10 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
     return {
       ...invoice,
       customerName: store.getCustomer(invoice.customerId)?.name ?? 'Unknown customer',
+      lines: invoice.lines.map((line) => ({
+        ...line,
+        unitPriceFormatted: formatMoney(line.unitPrice, invoice.currency),
+      })),
       total,
       totalFormatted: formatMoney(total, invoice.currency),
     }
@@ -68,7 +72,13 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
       const sum = invoices.reduce((acc, invoice) => acc + invoice.total, 0)
       return {
         invoices,
-        summary: { count: invoices.length, total: (sum / 100).toFixed(2) },
+        summary: {
+          count: invoices.length,
+          // Kept as the decimal string it always was, for existing API clients.
+          total: centsToDecimal(sum),
+          totalCents: sum,
+          totalFormatted: formatMoney(sum),
+        },
       }
     })
 
