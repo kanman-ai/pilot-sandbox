@@ -19,7 +19,19 @@
             <option value="paid">Paid</option>
           </select>
         </label>
+        <form id="export-form" class="export">
+          <label>
+            From
+            <input type="date" id="export-from" name="from" required />
+          </label>
+          <label>
+            To
+            <input type="date" id="export-to" name="to" required />
+          </label>
+          <button type="submit">Export CSV</button>
+        </form>
       </header>
+      <p id="export-error" role="alert" hidden></p>
       <table aria-label="Invoices">
         <thead>
           <tr>

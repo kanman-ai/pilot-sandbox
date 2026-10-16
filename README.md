@@ -19,6 +19,7 @@ kanman is an AI teammate. It takes stories from your tracker, writes an acceptan
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/api/invoices` | Filters: `status` (draft, sent, paid), `customerId`. Newest first. |
+| GET | `/api/invoices/export.csv` | Query: `from`, `to` (YYYY-MM-DD, both required, both days included). CSV download of invoices issued in that range, newest first. Columns: `number,customer,issue_date,due_date,status,total,currency`; `total` is a plain decimal like `720.50`. 400 with an `error` message if a date is missing, malformed or impossible, or `from` is after `to`. |
 | GET | `/api/invoices/:id` | 404 if not found. |
 | POST | `/api/invoices` | Creates a draft. Body: `customerId`, `issueDate`, `dueDate`, `lines[]`. |
 | GET | `/api/customers` | All customers. |
