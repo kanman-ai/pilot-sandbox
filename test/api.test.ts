@@ -111,4 +111,60 @@ describe('invoice API', () => {
     expect(response.statusCode).toBe(400)
     expect(response.json().error).toMatch(message)
   })
+
+  describe('POST /api/invoices/:id/mark-paid', () => {
+    let fixed: FastifyInstance
+
+    beforeEach(async () => {
+      fixed = await buildApp({ now: () => new Date(2026, 9, 16, 12, 0) })
+    })
+
+    afterEach(async () => {
+      await fixed.close()
+    })
+
+    it('marks a sent invoice as paid today and keeps it paid', async () => {
+      const response = await fixed.inject({ method: 'POST', url: '/api/invoices/inv_009/mark-paid' })
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({ number: 'INV-2026-0009', status: 'paid', paidDate: '2026-10-16' })
+      expect(response.json()).toMatchObject({
+        totalFormatted: '€4,125.00',
+        lines: [{ unitPriceFormatted: '€4,125.00' }],
+      })
+
+      const reread = await fixed.inject({ method: 'GET', url: '/api/invoices/inv_009' })
+      expect(reread.json()).toMatchObject({ status: 'paid', paidDate: '2026-10-16' })
+      const paid = await fixed.inject({ method: 'GET', url: '/api/invoices?status=paid' })
+      expect(paid.json().summary.count).toBe(5)
+    })
+
+    it('refuses a draft with 409 and changes nothing', async () => {
+      const response = await fixed.inject({ method: 'POST', url: '/api/invoices/inv_010/mark-paid' })
+      expect(response.statusCode).toBe(409)
+      expect(response.json().error).toBe('Invoice INV-2026-0010 is a draft; only sent invoices can be marked as paid')
+      const reread = await fixed.inject({ method: 'GET', url: '/api/invoices/inv_010' })
+      expect(reread.json().status).toBe('draft')
+      expect(reread.json()).not.toHaveProperty('paidDate')
+    })
+
+    it('refuses an invoice that is already paid with 409 and changes nothing', async () => {
+      const response = await fixed.inject({ method: 'POST', url: '/api/invoices/inv_004/mark-paid' })
+      expect(response.statusCode).toBe(409)
+      expect(response.json().error).toBe('Invoice INV-2026-0004 is already paid')
+      const reread = await fixed.inject({ method: 'GET', url: '/api/invoices/inv_004' })
+      expect(reread.json().status).toBe('paid')
+      expect(reread.json()).not.toHaveProperty('paidDate')
+    })
+
+    it('refuses to mark the same invoice paid twice', async () => {
+      await fixed.inject({ method: 'POST', url: '/api/invoices/inv_009/mark-paid' })
+      const again = await fixed.inject({ method: 'POST', url: '/api/invoices/inv_009/mark-paid' })
+      expect(again.statusCode).toBe(409)
+    })
+
+    it('returns 404 for an unknown invoice', async () => {
+      const response = await fixed.inject({ method: 'POST', url: '/api/invoices/inv_999/mark-paid' })
+      expect(response.statusCode).toBe(404)
+    })
+  })
 })

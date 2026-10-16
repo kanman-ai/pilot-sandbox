@@ -1,9 +1,10 @@
-/** Invoice API: list, read, create and export as CSV. */
+/** Invoice API: list, read, create, export as CSV and mark as paid. */
 import type { FastifyInstance } from 'fastify'
 import type { InvoiceStore } from '../data/store.js'
 import { buildInvoicesCsv, exportFileName, invoicesInRange, parseDateRange } from '../domain/csv.js'
-import { invoiceTotal, validateNewInvoice } from '../domain/invoices.js'
+import { invoiceTotal, markInvoicePaid, validateNewInvoice } from '../domain/invoices.js'
 import { INVOICE_STATUSES, type Invoice, type InvoiceFilter, type NewInvoice } from '../domain/types.js'
+import { toIsoDate } from '../lib/dates.js'
 import { centsToDecimal, formatMoney } from '../lib/money.js'
 
 const lineSchema = {
@@ -43,7 +44,14 @@ const listSchema = {
   },
 } as const
 
-export function invoiceRoutes(store: InvoiceStore) {
+export interface InvoiceRouteOptions {
+  /** Clock used for dates like paidDate. Tests pass a fixed one. */
+  now?: () => Date
+}
+
+export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions = {}) {
+  const now = options.now ?? (() => new Date())
+
   /** Adds the customer name and the total to an invoice for API responses. */
   function toView(invoice: Invoice) {
     const total = invoiceTotal(invoice.lines)
@@ -99,6 +107,15 @@ export function invoiceRoutes(store: InvoiceStore) {
       if (problems.length > 0) return reply.code(422).send({ error: 'Invalid invoice', problems })
       const invoice = store.createInvoice(request.body)
       return reply.code(201).send(toView(invoice))
+    })
+
+    app.post<{ Params: { id: string } }>('/api/invoices/:id/mark-paid', async (request, reply) => {
+      const invoice = store.getInvoice(request.params.id)
+      if (!invoice) return reply.code(404).send({ error: 'Invoice not found' })
+      const result = markInvoicePaid(invoice, toIsoDate(now()))
+      if (!result.ok) return reply.code(409).send({ error: result.error })
+      store.updateInvoice(result.invoice)
+      return toView(result.invoice)
     })
 
     app.get('/api/customers', async () => ({ customers: store.listCustomers() }))

@@ -9,6 +9,8 @@ import { invoiceRoutes } from './routes/invoices.js'
 export interface AppOptions {
   store?: InvoiceStore
   logger?: boolean
+  /** Clock for dates the app sets itself, such as paidDate. */
+  now?: () => Date
 }
 
 export async function buildApp(options: AppOptions = {}): Promise<FastifyInstance> {
@@ -19,7 +21,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
     root: fileURLToPath(new URL('../public', import.meta.url)),
   })
   await app.register(healthRoutes())
-  await app.register(invoiceRoutes(store))
+  await app.register(invoiceRoutes(store, { now: options.now }))
 
   return app
 }
