@@ -63,6 +63,7 @@ describe('invoice API', () => {
     expect(found.json()).toMatchObject({ number: 'INV-2026-0009', customerName: 'Acme Logistics GmbH', total: 412500 })
     const missing = await app.inject({ method: 'GET', url: '/api/invoices/inv_999' })
     expect(missing.statusCode).toBe(404)
+    expect(missing.json()).toEqual({ error: 'Invoice inv_999 not found' })
   })
 
   it('creates a draft invoice and rejects invalid input', async () => {
@@ -181,6 +182,7 @@ describe('invoice API', () => {
     it('returns 404 for an unknown invoice', async () => {
       const response = await fixed.inject({ method: 'POST', url: '/api/invoices/inv_999/mark-paid' })
       expect(response.statusCode).toBe(404)
+      expect(response.json()).toEqual({ error: 'Invoice inv_999 not found' })
     })
   })
 })

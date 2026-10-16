@@ -13,6 +13,9 @@ import { INVOICE_STATUSES, type Invoice, type InvoiceFilter, type NewInvoice } f
 import { toIsoDate } from '../lib/dates.js'
 import { centsToDecimal, formatMoney } from '../lib/money.js'
 
+/** 404 body for an unknown invoice id, naming the id like the customer 404 does. */
+const invoiceNotFound = (id: string) => ({ error: `Invoice ${id} not found` })
+
 const lineSchema = {
   type: 'object',
   required: ['description', 'quantity', 'unitPrice'],
@@ -127,7 +130,7 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
 
     app.get<{ Params: { id: string } }>('/api/invoices/:id', async (request, reply) => {
       const invoice = store.getInvoice(request.params.id)
-      if (!invoice) return reply.code(404).send({ error: 'Invoice not found' })
+      if (!invoice) return reply.code(404).send(invoiceNotFound(request.params.id))
       return toView(invoice)
     })
 
@@ -144,7 +147,7 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
       { schema: patchSchema },
       async (request, reply) => {
         const invoice = store.getInvoice(request.params.id)
-        if (!invoice) return reply.code(404).send({ error: 'Invoice not found' })
+        if (!invoice) return reply.code(404).send(invoiceNotFound(request.params.id))
         const { discountPercent } = request.body
         if (discountPercent !== null) {
           const problems = validateDiscountPercent(discountPercent)
@@ -159,7 +162,7 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
 
     app.post<{ Params: { id: string } }>('/api/invoices/:id/mark-paid', async (request, reply) => {
       const invoice = store.getInvoice(request.params.id)
-      if (!invoice) return reply.code(404).send({ error: 'Invoice not found' })
+      if (!invoice) return reply.code(404).send(invoiceNotFound(request.params.id))
       const result = markInvoicePaid(invoice, toIsoDate(now()))
       if (!result.ok) return reply.code(409).send({ error: result.error })
       store.updateInvoice(result.invoice)
