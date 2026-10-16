@@ -70,6 +70,19 @@ th {
   font-size: 0.875rem;
 }
 
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-overdue {
+  background-color: #b91c1c;
+  color: #fff;
+}
+
 #export-error {
   color: #b91c1c;
 }

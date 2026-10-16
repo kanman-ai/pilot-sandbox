@@ -39,10 +39,19 @@ function renderRow(invoice) {
     cell(invoice.customerName),
     cell(invoice.issueDate),
     cell(invoice.dueDate),
-    cell(invoice.status),
+    cell(statusContent(invoice.status)),
     cell(invoice.totalFormatted, 'amount'),
   )
   return row
+}
+
+// Overdue invoices get a red 'Overdue' badge in place of the plain status text.
+function statusContent(status) {
+  if (status !== 'overdue') return status
+  const badge = document.createElement('span')
+  badge.className = 'badge badge-overdue'
+  badge.textContent = 'Overdue'
+  return badge
 }
 
 function cell(content, className) {
