@@ -58,6 +58,22 @@ th {
   font-variant-numeric: tabular-nums;
 }
 
+.export {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.export label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+}
+
+#export-error {
+  color: #b91c1c;
+}
+
 tfoot td {
   font-weight: 600;
   border-bottom: none;
