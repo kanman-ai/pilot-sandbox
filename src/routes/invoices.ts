@@ -1,8 +1,14 @@
-/** Invoice API: list, read, create, export as CSV and mark as paid. */
+/** Invoice API: list, read, create, set the discount, export as CSV and mark as paid. */
 import type { FastifyInstance } from 'fastify'
 import type { InvoiceStore } from '../data/store.js'
 import { buildInvoicesCsv, exportFileName, invoicesInRange, parseDateRange } from '../domain/csv.js'
-import { invoiceTotal, markInvoicePaid, validateNewInvoice } from '../domain/invoices.js'
+import {
+  invoiceAmounts,
+  markInvoicePaid,
+  setInvoiceDiscount,
+  validateDiscountPercent,
+  validateNewInvoice,
+} from '../domain/invoices.js'
 import { INVOICE_STATUSES, type Invoice, type InvoiceFilter, type NewInvoice } from '../domain/types.js'
 import { toIsoDate } from '../lib/dates.js'
 import { centsToDecimal, formatMoney } from '../lib/money.js'
@@ -28,7 +34,22 @@ const createSchema = {
       issueDate: { type: 'string' },
       dueDate: { type: 'string' },
       currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+      // Checked by validateDiscountPercent, so a wrong value gets the same 422 { error, problems } answer.
+      discountPercent: {},
       lines: { type: 'array', items: lineSchema },
+    },
+  },
+} as const
+
+const patchSchema = {
+  body: {
+    type: 'object',
+    required: ['discountPercent'],
+    additionalProperties: false,
+    properties: {
+      // A number from 0 to 100 with at most two decimals, or null to remove the discount.
+      // Checked by validateDiscountPercent (422) rather than here (400), like POST validation.
+      discountPercent: {},
     },
   },
 } as const
@@ -52,9 +73,13 @@ export interface InvoiceRouteOptions {
 export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions = {}) {
   const now = options.now ?? (() => new Date())
 
-  /** Adds the customer name and the total to an invoice for API responses. */
+  /**
+   * Adds the customer name and the amounts to an invoice for API responses.
+   * discountPercent is always present: a number, or null when the invoice has no discount.
+   * total is the amount payable, after the discount.
+   */
   function toView(invoice: Invoice) {
-    const total = invoiceTotal(invoice.lines)
+    const { subtotal, discountPercent, discountAmount, total } = invoiceAmounts(invoice)
     return {
       ...invoice,
       customerName: store.getCustomer(invoice.customerId)?.name ?? 'Unknown customer',
@@ -62,6 +87,11 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
         ...line,
         unitPriceFormatted: formatMoney(line.unitPrice, invoice.currency),
       })),
+      subtotal,
+      subtotalFormatted: formatMoney(subtotal, invoice.currency),
+      discountPercent,
+      discountAmount,
+      discountAmountFormatted: formatMoney(discountAmount, invoice.currency),
       total,
       totalFormatted: formatMoney(total, invoice.currency),
     }
@@ -108,6 +138,24 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
       const invoice = store.createInvoice(request.body)
       return reply.code(201).send(toView(invoice))
     })
+
+    app.patch<{ Params: { id: string }; Body: { discountPercent: unknown } }>(
+      '/api/invoices/:id',
+      { schema: patchSchema },
+      async (request, reply) => {
+        const invoice = store.getInvoice(request.params.id)
+        if (!invoice) return reply.code(404).send({ error: 'Invoice not found' })
+        const { discountPercent } = request.body
+        if (discountPercent !== null) {
+          const problems = validateDiscountPercent(discountPercent)
+          if (problems.length > 0) return reply.code(422).send({ error: 'Invalid discount', problems })
+        }
+        const result = setInvoiceDiscount(invoice, discountPercent as number | null)
+        if (!result.ok) return reply.code(409).send({ error: result.error })
+        store.updateInvoice(result.invoice)
+        return toView(result.invoice)
+      },
+    )
 
     app.post<{ Params: { id: string } }>('/api/invoices/:id/mark-paid', async (request, reply) => {
       const invoice = store.getInvoice(request.params.id)

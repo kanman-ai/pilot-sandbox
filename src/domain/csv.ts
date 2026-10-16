@@ -1,7 +1,7 @@
 /** CSV export of invoices (RFC 4180 style: comma separated, CRLF line endings, quoted when needed). */
 import { centsToDecimal } from '../lib/money.js'
 import { compareIsoDates, isIsoDate } from '../lib/dates.js'
-import { invoiceTotal } from './invoices.js'
+import { invoiceAmounts } from './invoices.js'
 import type { Invoice } from './types.js'
 
 export const CSV_HEADER = ['number', 'customer', 'issue_date', 'due_date', 'status', 'total', 'currency'] as const
@@ -51,7 +51,7 @@ export function invoicesInRange(invoices: Invoice[], range: DateRange): Invoice[
 /**
  * Builds the CSV text: header row, then one row per invoice in the given order.
  * Formula neutralisation applies to the text columns (number, customer) only. Dates are YYYY-MM-DD,
- * status is one of a fixed set, currency is a code and the total is a number that may be negative,
+ * status is one of a fixed set, currency is a code and the total (after any discount) is a number that may be negative,
  * so prefixing those would only corrupt them.
  */
 export function buildInvoicesCsv(invoices: Invoice[], customerName: (customerId: string) => string): string {
@@ -61,7 +61,7 @@ export function buildInvoicesCsv(invoices: Invoice[], customerName: (customerId:
     invoice.issueDate,
     invoice.dueDate,
     invoice.status,
-    centsToDecimal(invoiceTotal(invoice.lines)),
+    centsToDecimal(invoiceAmounts(invoice).total),
     invoice.currency,
   ])
   return [[...CSV_HEADER], ...rows].map((row) => row.map(csvEscape).join(',')).join('\r\n') + '\r\n'

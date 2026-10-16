@@ -49,6 +49,7 @@ export class InvoiceStore {
       dueDate: input.dueDate,
       currency: input.currency ?? 'EUR',
       status: 'draft',
+      ...(input.discountPercent === undefined ? {} : { discountPercent: input.discountPercent }),
       lines: input.lines.map((line) => ({ ...line })),
     }
     this.invoices.push(invoice)
