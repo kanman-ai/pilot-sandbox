@@ -6,6 +6,10 @@ const count = document.getElementById('invoice-count')
 const sum = document.getElementById('invoice-sum')
 const statusFilter = document.getElementById('status-filter')
 const error = document.getElementById('error')
+const exportForm = document.getElementById('export-form')
+const exportFrom = document.getElementById('export-from')
+const exportTo = document.getElementById('export-to')
+const exportError = document.getElementById('export-error')
 
 async function load() {
   const params = new URLSearchParams()
@@ -47,5 +51,30 @@ function cell(content, className) {
   return td
 }
 
+// Downloads the CSV for the chosen date range. On an error the message is shown and nothing downloads.
+async function exportCsv(event) {
+  event.preventDefault()
+  exportError.hidden = true
+  const params = new URLSearchParams({ from: exportFrom.value, to: exportTo.value })
+  const response = await fetch(`/api/invoices/export.csv?${params}`)
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    exportError.textContent = body.error ?? 'Could not export invoices.'
+    exportError.hidden = false
+    return
+  }
+  const disposition = response.headers.get('content-disposition') ?? ''
+  const match = /filename="([^"]+)"/.exec(disposition)
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = match ? match[1] : `invoices-${exportFrom.value}-to-${exportTo.value}.csv`
+  document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
 statusFilter.addEventListener('change', load)
+exportForm.addEventListener('submit', exportCsv)
 load()

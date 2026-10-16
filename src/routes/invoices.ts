@@ -1,6 +1,7 @@
-/** Invoice API: list, read, create and mark as paid. */
+/** Invoice API: list, read, create, export as CSV and mark as paid. */
 import type { FastifyInstance } from 'fastify'
 import type { InvoiceStore } from '../data/store.js'
+import { buildInvoicesCsv, exportFileName, invoicesInRange, parseDateRange } from '../domain/csv.js'
 import { invoiceTotal, markInvoicePaid, validateNewInvoice } from '../domain/invoices.js'
 import { INVOICE_STATUSES, type Invoice, type InvoiceFilter, type NewInvoice } from '../domain/types.js'
 import { toIsoDate } from '../lib/dates.js'
@@ -80,6 +81,18 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
           totalFormatted: formatMoney(sum),
         },
       }
+    })
+
+    // Static path, so Fastify matches it before the parametric /api/invoices/:id route.
+    app.get<{ Querystring: { from?: string; to?: string } }>('/api/invoices/export.csv', async (request, reply) => {
+      const parsed = parseDateRange(request.query.from, request.query.to)
+      if ('error' in parsed) return reply.code(400).send({ error: parsed.error })
+      const invoices = invoicesInRange(store.listInvoices(), parsed.range)
+      const csv = buildInvoicesCsv(invoices, (id) => store.getCustomer(id)?.name ?? 'Unknown customer')
+      return reply
+        .header('content-type', 'text/csv; charset=utf-8')
+        .header('content-disposition', `attachment; filename="${exportFileName(parsed.range)}"`)
+        .send(csv)
     })
 
     app.get<{ Params: { id: string } }>('/api/invoices/:id', async (request, reply) => {

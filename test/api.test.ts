@@ -88,6 +88,30 @@ describe('invoice API', () => {
     expect(invalid.json().problems).toContain('customerId does not exist')
   })
 
+  it('exports a date range as a CSV download without colliding with /:id', async () => {
+    const response = await app.inject({ method: 'GET', url: '/api/invoices/export.csv?from=2026-03-01&to=2026-06-30' })
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['content-type']).toMatch(/^text\/csv/)
+    expect(response.headers['content-disposition']).toBe('attachment; filename="invoices-2026-03-01-to-2026-06-30.csv"')
+    const lines = response.body.trimEnd().split('\r\n')
+    expect(lines[0]).toBe('number,customer,issue_date,due_date,status,total,currency')
+    expect(lines.slice(1).map((line) => line.split(',')[0])).toEqual([
+      'INV-2026-0006', 'INV-2026-0005', 'INV-2026-0004', 'INV-2026-0003',
+    ])
+    expect(lines[4]).toMatch(/,720\.50,EUR$/)
+  })
+
+  it.each([
+    ['from after to', 'from=2026-07-01&to=2026-06-01', /must not be after/],
+    ['missing from', 'to=2026-06-01', /from is required/],
+    ['malformed date', 'from=01.03.2026&to=2026-06-01', /from must be a real date in YYYY-MM-DD form/],
+    ['impossible date', 'from=2026-02-01&to=2026-02-30', /to must be a real date in YYYY-MM-DD form/],
+  ])('rejects the export with 400 for %s', async (_name, query, message) => {
+    const response = await app.inject({ method: 'GET', url: `/api/invoices/export.csv?${query}` })
+    expect(response.statusCode).toBe(400)
+    expect(response.json().error).toMatch(message)
+  })
+
   describe('POST /api/invoices/:id/mark-paid', () => {
     let fixed: FastifyInstance
 
