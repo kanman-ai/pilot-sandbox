@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { seedCustomers, seedInvoices } from '../src/data/seed.js'
-import { buildInvoicesCsv, csvEscape, exportFileName, invoicesInRange, neutraliseFormula, parseDateRange } from '../src/domain/csv.js'
+import { buildInvoicesCsv, buildSimpleInvoicesCsv, csvEscape, exportFileName, invoicesInRange, neutraliseFormula, parseDateRange } from '../src/domain/csv.js'
 import type { Invoice } from '../src/domain/types.js'
 
 const customerName = (id: string) => seedCustomers.find((customer) => customer.id === id)?.name ?? 'Unknown customer'
@@ -92,5 +92,35 @@ describe('buildInvoicesCsv', () => {
 
   it('names the file after the range', () => {
     expect(exportFileName({ from: '2026-03-01', to: '2026-06-30' })).toBe('invoices-2026-03-01-to-2026-06-30.csv')
+  })
+})
+
+describe('buildSimpleInvoicesCsv', () => {
+  const invoice: Invoice = {
+    id: 'inv_x', number: 'INV-2026-0099', customerId: 'cus_x', issueDate: '2026-05-01', dueDate: '2026-05-31',
+    currency: 'EUR', status: 'sent', lines: [{ description: 'x', quantity: 2, unitPrice: 1000 }], discountPercent: 10,
+  }
+
+  it('writes the header and one escaped row per invoice with the discounted total', () => {
+    expect(buildSimpleInvoicesCsv([invoice], () => 'Smith, "Jones" & Co')).toBe(
+      'id,customer,total,status\r\n' +
+      'inv_x,"Smith, ""Jones"" & Co",18.00,sent\r\n',
+    )
+  })
+
+  it('neutralises formulas in the text columns before quoting', () => {
+    expect(buildSimpleInvoicesCsv([invoice], () => '=HYPERLINK("http://x.test","a,b")')).toBe(
+      'id,customer,total,status\r\n' +
+      `inv_x,"'=HYPERLINK(""http://x.test"",""a,b"")",18.00,sent\r\n`,
+    )
+    expect(buildSimpleInvoicesCsv([{ ...invoice, id: '@id' }], () => 'Acme')).toContain(`\r\n'@id,Acme,18.00,sent\r\n`)
+  })
+
+  it('exports every seeded invoice in the given order', () => {
+    const csv = buildSimpleInvoicesCsv(seedInvoices, customerName)
+    const lines = csv.trimEnd().split('\r\n')
+    expect(lines[0]).toBe('id,customer,total,status')
+    expect(lines.slice(1).map((line) => line.split(',')[0])).toEqual(seedInvoices.map((i) => i.id))
+    expect(lines).toContain('inv_003,Nordlicht Studio,720.50,paid')
   })
 })

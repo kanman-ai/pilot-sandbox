@@ -1,7 +1,13 @@
-/** Invoice API: list, read, create, set the discount, export as CSV and mark as paid. */
+/** Invoice API: list, read, create, set the discount, export as CSV (all or by date range) and mark as paid. */
 import type { FastifyInstance } from 'fastify'
 import type { InvoiceStore } from '../data/store.js'
-import { buildInvoicesCsv, exportFileName, invoicesInRange, parseDateRange } from '../domain/csv.js'
+import {
+  buildInvoicesCsv,
+  buildSimpleInvoicesCsv,
+  exportFileName,
+  invoicesInRange,
+  parseDateRange,
+} from '../domain/csv.js'
 import {
   invoiceAmounts,
   markInvoicePaid,
@@ -114,6 +120,16 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
           totalFormatted: formatMoney(sum),
         },
       }
+    })
+
+    // All invoices as a simple CSV, in the same order as GET /api/invoices. A different path from
+    // /api/invoices/:id (no slash before .csv), so the parametric route never sees it.
+    app.get('/api/invoices.csv', async (_request, reply) => {
+      const csv = buildSimpleInvoicesCsv(store.listInvoices(), (id) => store.getCustomer(id)?.name ?? 'Unknown customer')
+      return reply
+        .header('content-type', 'text/csv; charset=utf-8')
+        .header('content-disposition', 'attachment; filename="invoices.csv"')
+        .send(csv)
     })
 
     // Static path, so Fastify matches it before the parametric /api/invoices/:id route.
