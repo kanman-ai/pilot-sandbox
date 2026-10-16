@@ -25,21 +25,23 @@ kanman is an AI teammate. It takes stories from your tracker, writes an acceptan
 | POST | `/api/invoices` | Creates a draft. Body: `customerId`, `issueDate`, `dueDate`, `lines[]`, optional `discountPercent` (0–100, at most two decimals). |
 | PATCH | `/api/invoices/:id` | Sets the discount of a draft. Body: `{ discountPercent: number \| null }`; `null` removes the discount. 200 with the updated invoice. 404 if not found, 409 if it is sent or paid (the invoice stays unchanged), 422 with `{ error: "Invalid discount", problems }` for an invalid value. |
 | POST | `/api/invoices/:id/mark-paid` | Marks a sent or overdue invoice as paid and sets `paidDate` to today. 404 if not found, 409 if it is a draft or already paid. |
+| POST | `/api/invoices/:id/send-reminder` | Records a payment reminder for an overdue invoice (no email is sent) and sets `lastReminderSentAt` to the current time (ISO timestamp). 200 with the updated invoice. 404 if not found, 409 if it is not overdue (draft, paid, or sent and not yet due; the invoice stays unchanged). |
 | GET | `/api/customers` | All customers. |
 | GET | `/api/customers/:id` | One customer, same shape as an entry of `/api/customers`. 404 with `{ error: "Customer <id> not found" }` if not found. |
 | GET | `/health` | `{ status, version, uptimeSeconds }`. Not logged. Used by the container health check. |
 
 Amounts are integer cents. The shared money formatter is `formatMoney` in `src/lib/money.ts`.
 
-Invoice views (list rows, `GET /api/invoices/:id` and the create, PATCH and mark-paid responses) include:
+Invoice views (list rows, `GET /api/invoices/:id` and the create, PATCH, mark-paid and send-reminder responses) include:
 
 - `subtotal` (sum of the lines), `discountPercent` (number, or `null` without a discount), `discountAmount` and `total` (subtotal minus discount), plus `subtotalFormatted`, `discountAmountFormatted` and `totalFormatted`.
 - The discount is subtotal × percent / 100, rounded half-up to the cent.
 - Totals in the list rows, the list `summary` and the CSV `total` column are the discounted totals.
+- `lastReminderSentAt`: ISO timestamp of the last reminder sent with `send-reminder`, or `null` when none was sent.
 
 ## Overdue invoices
 
-A sent invoice whose `dueDate` is before today (the server's local date) has the status `overdue` wherever invoices are returned: list rows, `GET /api/invoices/:id`, the create, PATCH and mark-paid responses, and the `status` column of both CSV exports. The stored status stays `draft`, `sent` or `paid`; `overdue` is worked out each time an invoice is returned, so an invoice due today is still `sent`. Drafts and paid invoices never become overdue. Filter with `GET /api/invoices?status=overdue`. An overdue invoice can be marked as paid like a sent one, and the invoice page shows its **Mark as paid** button.
+A sent invoice whose `dueDate` is before today (the server's local date) has the status `overdue` wherever invoices are returned: list rows, `GET /api/invoices/:id`, the create, PATCH and mark-paid responses, and the `status` column of both CSV exports. The stored status stays `draft`, `sent` or `paid`; `overdue` is worked out each time an invoice is returned, so an invoice due today is still `sent`. Drafts and paid invoices never become overdue. Filter with `GET /api/invoices?status=overdue`. An overdue invoice can be marked as paid like a sent one, and the invoice page shows its **Mark as paid** button. Only an overdue invoice can get a payment reminder: the invoice page shows a **Send reminder** button for it, and once one is sent the page shows **Reminder sent** with its date.
 
 On the invoice list, overdue rows show a red **Overdue** badge (white text on `#b91c1c`) in the Status column instead of the plain status text; other rows show their status as before.
 

@@ -1,4 +1,4 @@
-/** Pure invoice logic: totals and discounts, filtering, validation and status changes. */
+/** Pure invoice logic: totals and discounts, filtering, validation, status changes and reminders. */
 import { compareIsoDates, isIsoDate } from '../lib/dates.js'
 import type { Invoice, InvoiceFilter, InvoiceLine, InvoiceViewStatus, NewInvoice } from './types.js'
 
@@ -135,4 +135,18 @@ export function markInvoicePaid(invoice: Invoice, paidDate: string): MarkPaidRes
     return { ok: false, error: `Invoice ${invoice.number} is a ${invoice.status}; only sent invoices can be marked as paid` }
   }
   return { ok: true, invoice: { ...invoice, status: 'paid', paidDate } }
+}
+
+export type SendReminderResult = { ok: true; invoice: Invoice } | { ok: false; error: string }
+
+/**
+ * Records a payment reminder for an invoice that is overdue on the given day (YYYY-MM-DD), with
+ * sentAt (an ISO timestamp) as lastReminderSentAt. Drafts, paid and not yet due invoices are refused.
+ */
+export function sendInvoiceReminder(invoice: Invoice, today: string, sentAt: string): SendReminderResult {
+  const status = invoiceStatusOn(invoice, today)
+  if (status !== 'overdue') {
+    return { ok: false, error: `Invoice ${invoice.number} is ${status}; only overdue invoices can get a reminder` }
+  }
+  return { ok: true, invoice: { ...invoice, lastReminderSentAt: sentAt } }
 }
