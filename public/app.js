@@ -1,4 +1,5 @@
 // Invoice list page. Plain browser JavaScript, no build step.
+// Amounts come preformatted from the API (shared formatter, formatMoney in src/lib/money.ts).
 
 const rows = document.getElementById('invoice-rows')
 const count = document.getElementById('invoice-count')
@@ -19,7 +20,7 @@ async function load() {
   const data = await response.json()
   rows.replaceChildren(...data.invoices.map(renderRow))
   count.textContent = `${data.summary.count} invoices`
-  sum.textContent = `EUR ${data.summary.total}`
+  sum.textContent = data.summary.totalFormatted
 }
 
 function renderRow(invoice) {
@@ -28,14 +29,13 @@ function renderRow(invoice) {
   const link = document.createElement('a')
   link.href = `/invoice.html?id=${encodeURIComponent(invoice.id)}`
   link.textContent = invoice.number
-  const amount = `${(invoice.total / 100).toFixed(2)} ${invoice.currency}`
   row.append(
     cell(link),
     cell(invoice.customerName),
     cell(invoice.issueDate),
     cell(invoice.dueDate),
     cell(invoice.status),
-    cell(amount, 'amount'),
+    cell(invoice.totalFormatted, 'amount'),
   )
   return row
 }

@@ -1,4 +1,4 @@
-// Invoice detail page. The total comes preformatted from the API (shared formatter).
+// Invoice detail page. The total and unit prices come preformatted from the API (shared formatter).
 
 const id = new URLSearchParams(location.search).get('id')
 const response = await fetch(`/api/invoices/${encodeURIComponent(id ?? '')}`)
@@ -18,7 +18,7 @@ if (response.ok) {
       for (const [value, className] of [
         [line.description],
         [String(line.quantity), 'amount'],
-        [`${(line.unitPrice / 100).toFixed(2)}`, 'amount'],
+        [line.unitPriceFormatted, 'amount'],
       ]) {
         const td = document.createElement('td')
         if (className) td.className = className
