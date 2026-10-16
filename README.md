@@ -19,6 +19,7 @@ kanman is an AI teammate. It takes stories from your tracker, writes an acceptan
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/api/invoices` | Filters: `status` (draft, sent, paid), `customerId`. Newest first. |
+| GET | `/api/invoices.csv` | CSV download (`invoices.csv`) of all invoices, in the same order as `GET /api/invoices`. Columns: `id,customer,total,status`. See [CSV export](#csv-export). |
 | GET | `/api/invoices/export.csv` | Query: `from`, `to` (YYYY-MM-DD, both required, both days included). CSV download of invoices issued in that range, newest first. Columns: `number,customer,issue_date,due_date,status,total,currency`; `total` is a plain decimal like `720.50`. 400 with an `error` message if a date is missing, malformed or impossible, or `from` is after `to`. |
 | GET | `/api/invoices/:id` | 404 if not found. |
 | POST | `/api/invoices` | Creates a draft. Body: `customerId`, `issueDate`, `dueDate`, `lines[]`, optional `discountPercent` (0–100, at most two decimals). |
@@ -35,6 +36,12 @@ Invoice views (list rows, `GET /api/invoices/:id` and the create, PATCH and mark
 - `subtotal` (sum of the lines), `discountPercent` (number, or `null` without a discount), `discountAmount` and `total` (subtotal minus discount), plus `subtotalFormatted`, `discountAmountFormatted` and `totalFormatted`.
 - The discount is subtotal × percent / 100, rounded half-up to the cent.
 - Totals in the list rows, the list `summary` and the CSV `total` column are the discounted totals.
+
+## CSV export
+
+`GET /api/invoices.csv` returns every invoice as a CSV download named `invoices.csv` (`text/csv; charset=utf-8`), newest first like `GET /api/invoices`, with no filters. The header is `id,customer,total,status`; `customer` is the customer name, `total` is the discounted total as a plain decimal like `720.50`. Lines end with CRLF, values with a comma, quote or line break are quoted, and text that starts with `=`, `+`, `-` or `@` is prefixed with `'` so spreadsheets do not run it as a formula.
+
+On the invoice list, the **Download CSV** button downloads this file without asking for dates. The **Export CSV** form next to it still exports a date range via `/api/invoices/export.csv`.
 
 ## Run it
 
