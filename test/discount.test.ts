@@ -141,7 +141,8 @@ describe('discount API', () => {
   let app: FastifyInstance
 
   beforeEach(async () => {
-    app = await buildApp()
+    // Before INV-2026-0009 is due (2026-10-10), so it shows as sent, not overdue (AM-2).
+    app = await buildApp({ now: () => new Date(2026, 9, 1, 12, 0) })
   })
 
   afterEach(async () => {

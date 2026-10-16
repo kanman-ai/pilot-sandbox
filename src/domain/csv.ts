@@ -1,7 +1,7 @@
 /** CSV export of invoices (RFC 4180 style: comma separated, CRLF line endings, quoted when needed). */
 import { centsToDecimal } from '../lib/money.js'
 import { compareIsoDates, isIsoDate } from '../lib/dates.js'
-import { invoiceAmounts } from './invoices.js'
+import { invoiceAmounts, invoiceStatusOn } from './invoices.js'
 import type { Invoice } from './types.js'
 
 export const CSV_HEADER = ['number', 'customer', 'issue_date', 'due_date', 'status', 'total', 'currency'] as const
@@ -53,14 +53,19 @@ export function invoicesInRange(invoices: Invoice[], range: DateRange): Invoice[
  * Formula neutralisation applies to the text columns (number, customer) only. Dates are YYYY-MM-DD,
  * status is one of a fixed set, currency is a code and the total (after any discount) is a number that may be negative,
  * so prefixing those would only corrupt them.
+ * With today (YYYY-MM-DD) the status column is the shown status, so a sent invoice past due is overdue.
  */
-export function buildInvoicesCsv(invoices: Invoice[], customerName: (customerId: string) => string): string {
+export function buildInvoicesCsv(
+  invoices: Invoice[],
+  customerName: (customerId: string) => string,
+  today?: string,
+): string {
   const rows = invoices.map((invoice) => [
     neutraliseFormula(invoice.number),
     neutraliseFormula(customerName(invoice.customerId)),
     invoice.issueDate,
     invoice.dueDate,
-    invoice.status,
+    today === undefined ? invoice.status : invoiceStatusOn(invoice, today),
     centsToDecimal(invoiceAmounts(invoice).total),
     invoice.currency,
   ])
@@ -73,13 +78,18 @@ export const SIMPLE_CSV_HEADER = ['id', 'customer', 'total', 'status'] as const
  * Builds the simple CSV of all invoices: header row, then one row per invoice in the given order.
  * Formula neutralisation applies to the text columns (id, customer) only. The total (after any
  * discount) is a plain decimal and status is one of a fixed set, so prefixing those would only corrupt them.
+ * With today (YYYY-MM-DD) the status column is the shown status, so a sent invoice past due is overdue.
  */
-export function buildSimpleInvoicesCsv(invoices: Invoice[], customerName: (customerId: string) => string): string {
+export function buildSimpleInvoicesCsv(
+  invoices: Invoice[],
+  customerName: (customerId: string) => string,
+  today?: string,
+): string {
   const rows = invoices.map((invoice) => [
     neutraliseFormula(invoice.id),
     neutraliseFormula(customerName(invoice.customerId)),
     centsToDecimal(invoiceAmounts(invoice).total),
-    invoice.status,
+    today === undefined ? invoice.status : invoiceStatusOn(invoice, today),
   ])
   return [[...SIMPLE_CSV_HEADER], ...rows].map((row) => row.map(csvEscape).join(',')).join('\r\n') + '\r\n'
 }
