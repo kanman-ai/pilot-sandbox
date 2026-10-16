@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { seedCustomers, seedInvoices } from '../src/data/seed.js'
-import { buildInvoicesCsv, csvEscape, exportFileName, invoicesInRange, parseDateRange } from '../src/domain/csv.js'
+import { buildInvoicesCsv, csvEscape, exportFileName, invoicesInRange, neutraliseFormula, parseDateRange } from '../src/domain/csv.js'
 import type { Invoice } from '../src/domain/types.js'
 
 const customerName = (id: string) => seedCustomers.find((customer) => customer.id === id)?.name ?? 'Unknown customer'
@@ -14,6 +14,18 @@ describe('csvEscape', () => {
     expect(csvEscape('Acme, Inc.')).toBe('"Acme, Inc."')
     expect(csvEscape('The "Best" Co')).toBe('"The ""Best"" Co"')
     expect(csvEscape('two\nlines')).toBe('"two\nlines"')
+  })
+})
+
+describe('neutraliseFormula', () => {
+  it.each(['=', '+', '-', '@', '\t', '\r'])('prefixes text starting with %j with a single quote', (trigger) => {
+    expect(neutraliseFormula(`${trigger}SUM(A1:A9)`)).toBe(`'${trigger}SUM(A1:A9)`)
+  })
+
+  it('leaves other text alone, including triggers that are not at the start', () => {
+    expect(neutraliseFormula('Birch & Sons')).toBe('Birch & Sons')
+    expect(neutraliseFormula('Smith-Jones = Co')).toBe('Smith-Jones = Co')
+    expect(neutraliseFormula('')).toBe('')
   })
 })
 
@@ -54,6 +66,20 @@ describe('buildInvoicesCsv', () => {
       'number,customer,issue_date,due_date,status,total,currency\r\n' +
       'INV-2026-0099,"Smith, ""Jones"" & Co",2026-05-01,2026-05-31,sent,0.05,EUR\r\n',
     )
+  })
+
+  it('neutralises formulas in text columns before quoting, but keeps a negative total a plain number', () => {
+    const invoice: Invoice = {
+      id: 'inv_y', number: 'INV-2026-0098', customerId: 'cus_y', issueDate: '2026-05-02', dueDate: '2026-06-01',
+      currency: 'EUR', status: 'draft', lines: [{ description: 'refund', quantity: -1, unitPrice: 1250 }],
+    }
+    expect(buildInvoicesCsv([invoice], () => '=HYPERLINK("http://x.test","a,b")')).toBe(
+      'number,customer,issue_date,due_date,status,total,currency\r\n' +
+      `INV-2026-0098,"'=HYPERLINK(""http://x.test"",""a,b"")",2026-05-02,2026-06-01,draft,-12.50,EUR\r\n`,
+    )
+    expect(buildInvoicesCsv([invoice], () => '@cmd,"x"')).toContain(`INV-2026-0098,"'@cmd,""x""",2026-05-02,`)
+    expect(buildInvoicesCsv([invoice], () => '-2+3')).toContain(`INV-2026-0098,'-2+3,2026-05-02,`)
+    expect(buildInvoicesCsv([invoice], () => '\rline')).toContain(`INV-2026-0098,"'\rline",2026-05-02,`)
   })
 
   it('exports the seeded range in order', () => {

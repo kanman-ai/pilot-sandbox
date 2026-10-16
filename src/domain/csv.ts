@@ -11,6 +11,15 @@ export function csvEscape(value: string): string {
   return /[",\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
 }
 
+/**
+ * Prefixes free text that starts with =, +, -, @, tab or carriage return with a single quote, so a
+ * spreadsheet shows it as text instead of running it as a formula (OWASP CSV injection guidance).
+ * Use it for text columns only; csvEscape still runs afterwards.
+ */
+export function neutraliseFormula(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+}
+
 export interface DateRange {
   from: string
   to: string
@@ -39,11 +48,16 @@ export function invoicesInRange(invoices: Invoice[], range: DateRange): Invoice[
     .sort((a, b) => compareIsoDates(b.issueDate, a.issueDate) || b.number.localeCompare(a.number))
 }
 
-/** Builds the CSV text: header row, then one row per invoice in the given order. */
+/**
+ * Builds the CSV text: header row, then one row per invoice in the given order.
+ * Formula neutralisation applies to the text columns (number, customer) only. Dates are YYYY-MM-DD,
+ * status is one of a fixed set, currency is a code and the total is a number that may be negative,
+ * so prefixing those would only corrupt them.
+ */
 export function buildInvoicesCsv(invoices: Invoice[], customerName: (customerId: string) => string): string {
   const rows = invoices.map((invoice) => [
-    invoice.number,
-    customerName(invoice.customerId),
+    neutraliseFormula(invoice.number),
+    neutraliseFormula(customerName(invoice.customerId)),
     invoice.issueDate,
     invoice.dueDate,
     invoice.status,
