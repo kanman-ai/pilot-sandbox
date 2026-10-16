@@ -102,6 +102,21 @@ describe('invoice API', () => {
     expect(lines[4]).toMatch(/,720\.50,EUR$/)
   })
 
+  it('downloads all invoices as invoices.csv in list order without colliding with /:id', async () => {
+    const response = await app.inject({ method: 'GET', url: '/api/invoices.csv' })
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['content-type']).toBe('text/csv; charset=utf-8')
+    expect(response.headers['content-disposition']).toBe('attachment; filename="invoices.csv"')
+    expect(response.body.endsWith('\r\n')).toBe(true)
+    const lines = response.body.trimEnd().split('\r\n')
+    expect(lines[0]).toBe('id,customer,total,status')
+    const rows = lines.slice(1)
+    expect(rows).toHaveLength(10)
+    const list = await app.inject({ method: 'GET', url: '/api/invoices' })
+    expect(rows.map((row) => row.split(',')[0])).toEqual(list.json().invoices.map((invoice: { id: string }) => invoice.id))
+    expect(rows).toContain('inv_003,Nordlicht Studio,720.50,paid')
+  })
+
   it.each([
     ['from after to', 'from=2026-07-01&to=2026-06-01', /must not be after/],
     ['missing from', 'to=2026-06-01', /from is required/],

@@ -10,6 +10,7 @@ const exportForm = document.getElementById('export-form')
 const exportFrom = document.getElementById('export-from')
 const exportTo = document.getElementById('export-to')
 const exportError = document.getElementById('export-error')
+const downloadCsvButton = document.getElementById('download-csv')
 
 async function load() {
   const params = new URLSearchParams()
@@ -75,6 +76,27 @@ async function exportCsv(event) {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+// Downloads all invoices as invoices.csv, no dates needed. On an error the message is shown and nothing downloads.
+async function downloadCsv() {
+  exportError.hidden = true
+  const response = await fetch('/api/invoices.csv')
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    exportError.textContent = body.error ?? 'Could not download invoices.'
+    exportError.hidden = false
+    return
+  }
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'invoices.csv'
+  document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
 statusFilter.addEventListener('change', load)
 exportForm.addEventListener('submit', exportCsv)
+downloadCsvButton.addEventListener('click', downloadCsv)
 load()
