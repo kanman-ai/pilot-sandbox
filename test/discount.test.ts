@@ -280,7 +280,7 @@ describe('discount API', () => {
   it('returns 404 for an unknown invoice', async () => {
     const response = await patch('inv_999', { discountPercent: 10 })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({ error: 'Invoice not found' })
+    expect(response.json()).toEqual({ error: 'Invoice inv_999 not found' })
   })
 
   it.each([
