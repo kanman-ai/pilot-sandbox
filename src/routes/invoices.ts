@@ -119,5 +119,11 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
     })
 
     app.get('/api/customers', async () => ({ customers: store.listCustomers() }))
+
+    app.get<{ Params: { id: string } }>('/api/customers/:id', async (request, reply) => {
+      const customer = store.getCustomer(request.params.id)
+      if (!customer) return reply.code(404).send({ error: `Customer ${request.params.id} not found` })
+      return customer
+    })
   }
 }

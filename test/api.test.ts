@@ -112,6 +112,22 @@ describe('invoice API', () => {
     expect(response.json().error).toMatch(message)
   })
 
+  it('returns one customer, the same as its entry in the customer list', async () => {
+    const list = await app.inject({ method: 'GET', url: '/api/customers' })
+    const entry = list.json().customers.find((customer: { id: string }) => customer.id === 'cus_birch')
+    expect(entry).toBeDefined()
+
+    const response = await app.inject({ method: 'GET', url: '/api/customers/cus_birch' })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual(entry)
+  })
+
+  it('returns 404 with an error naming the id for an unknown customer', async () => {
+    const response = await app.inject({ method: 'GET', url: '/api/customers/cus_nobody' })
+    expect(response.statusCode).toBe(404)
+    expect(response.json()).toEqual({ error: 'Customer cus_nobody not found' })
+  })
+
   describe('POST /api/invoices/:id/mark-paid', () => {
     let fixed: FastifyInstance
 
