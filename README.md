@@ -23,6 +23,7 @@ kanman is an AI teammate. It takes stories from your tracker, writes an acceptan
 | GET | `/api/invoices/:id` | 404 if not found. |
 | POST | `/api/invoices` | Creates a draft. Body: `customerId`, `issueDate`, `dueDate`, `lines[]`. |
 | GET | `/api/customers` | All customers. |
+| GET | `/health` | `{ status, version, uptimeSeconds }`. Not logged. Used by the container health check. |
 
 Amounts are integer cents. The shared money formatter is `formatMoney` in `src/lib/money.ts`.
 
