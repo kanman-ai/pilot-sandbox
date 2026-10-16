@@ -21,6 +21,37 @@ describe('invoice API', () => {
     expect(body.summary.count).toBe(10)
   })
 
+  it('returns the summary total raw, in cents and formatted with the shared formatter', async () => {
+    const all = await app.inject({ method: 'GET', url: '/api/invoices' })
+    expect(all.json().summary).toEqual({
+      count: 10,
+      total: '19920.49',
+      totalCents: 1992049,
+      totalFormatted: '€19,920.49',
+    })
+
+    const sent = await app.inject({ method: 'GET', url: '/api/invoices?status=sent' })
+    expect(sent.json().summary).toEqual({
+      count: 5,
+      total: '13764.99',
+      totalCents: 1376499,
+      totalFormatted: '€13,764.99',
+    })
+  })
+
+  it('formats each invoice total and line unit price with the shared formatter', async () => {
+    const list = await app.inject({ method: 'GET', url: '/api/invoices' })
+    const row = list.json().invoices.find((invoice: { number: string }) => invoice.number === 'INV-2026-0009')
+    expect(row).toMatchObject({ total: 412500, totalFormatted: '€4,125.00' })
+
+    const detail = await app.inject({ method: 'GET', url: '/api/invoices/inv_008' })
+    expect(detail.json()).toMatchObject({
+      total: 440000,
+      totalFormatted: '€4,400.00',
+      lines: [{ description: 'Loyalty card app, design sprint', quantity: 5, unitPrice: 88000, unitPriceFormatted: '€880.00' }],
+    })
+  })
+
   it('filters by customer', async () => {
     const response = await app.inject({ method: 'GET', url: '/api/invoices?customerId=cus_birch' })
     const numbers = response.json().invoices.map((invoice: { number: string }) => invoice.number)
