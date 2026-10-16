@@ -35,7 +35,8 @@ function render(invoice) {
   document.getElementById('invoice-paid').hidden = !invoice.paidDate
   renderDiscount(invoice)
   setText('invoice-total', invoice.totalFormatted)
-  markPaid.hidden = invoice.status !== 'sent'
+  // Overdue invoices are sent invoices past their due date, so they can be marked as paid too.
+  markPaid.hidden = invoice.status !== 'sent' && invoice.status !== 'overdue'
   document.getElementById('line-rows').replaceChildren(
     ...invoice.lines.map((line) => {
       const row = document.createElement('tr')

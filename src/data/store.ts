@@ -23,8 +23,9 @@ export class InvoiceStore {
     return this.customers.get(id)
   }
 
-  listInvoices(filter: InvoiceFilter = {}): Invoice[] {
-    return filterInvoices(this.invoices, filter)
+  /** With today (YYYY-MM-DD) the status filter matches the shown status, so 'overdue' works. */
+  listInvoices(filter: InvoiceFilter = {}, today?: string): Invoice[] {
+    return filterInvoices(this.invoices, filter, today)
   }
 
   getInvoice(id: string): Invoice | undefined {

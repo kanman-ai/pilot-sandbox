@@ -4,6 +4,14 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid'
 
 export const INVOICE_STATUSES: readonly InvoiceStatus[] = ['draft', 'sent', 'paid']
 
+/**
+ * Status as the API shows it: the stored status, except that a sent invoice due before today is
+ * 'overdue'. Overdue is never stored; it is derived when an invoice is returned (invoiceStatusOn).
+ */
+export type InvoiceViewStatus = InvoiceStatus | 'overdue'
+
+export const INVOICE_VIEW_STATUSES: readonly InvoiceViewStatus[] = [...INVOICE_STATUSES, 'overdue']
+
 export interface Customer {
   id: string
   name: string
@@ -44,6 +52,7 @@ export interface NewInvoice {
 }
 
 export interface InvoiceFilter {
-  status?: InvoiceStatus
+  /** Matches the shown status (InvoiceViewStatus), so 'sent' excludes overdue invoices. */
+  status?: InvoiceViewStatus
   customerId?: string
 }

@@ -4,12 +4,13 @@ import type { InvoiceStore } from '../data/store.js'
 import { buildInvoicesCsv, exportFileName, invoicesInRange, parseDateRange } from '../domain/csv.js'
 import {
   invoiceAmounts,
+  invoiceStatusOn,
   markInvoicePaid,
   setInvoiceDiscount,
   validateDiscountPercent,
   validateNewInvoice,
 } from '../domain/invoices.js'
-import { INVOICE_STATUSES, type Invoice, type InvoiceFilter, type NewInvoice } from '../domain/types.js'
+import { INVOICE_VIEW_STATUSES, type Invoice, type InvoiceFilter, type NewInvoice } from '../domain/types.js'
 import { toIsoDate } from '../lib/dates.js'
 import { centsToDecimal, formatMoney } from '../lib/money.js'
 
@@ -62,29 +63,33 @@ const listSchema = {
     type: 'object',
     additionalProperties: false,
     properties: {
-      status: { type: 'string', enum: INVOICE_STATUSES },
+      status: { type: 'string', enum: INVOICE_VIEW_STATUSES },
       customerId: { type: 'string' },
     },
   },
 } as const
 
 export interface InvoiceRouteOptions {
-  /** Clock used for dates like paidDate. Tests pass a fixed one. */
+  /** Clock used for dates like paidDate and for "today" in the overdue status. Tests pass a fixed one. */
   now?: () => Date
 }
 
 export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions = {}) {
   const now = options.now ?? (() => new Date())
+  /** Today in the server's local time zone, YYYY-MM-DD. */
+  const today = () => toIsoDate(now())
 
   /**
    * Adds the customer name and the amounts to an invoice for API responses.
+   * status is the shown status: a sent invoice due before today is 'overdue' (never stored).
    * discountPercent is always present: a number, or null when the invoice has no discount.
    * total is the amount payable, after the discount.
    */
-  function toView(invoice: Invoice) {
+  function toView(invoice: Invoice, day = today()) {
     const { subtotal, discountPercent, discountAmount, total } = invoiceAmounts(invoice)
     return {
       ...invoice,
+      status: invoiceStatusOn(invoice, day),
       customerName: store.getCustomer(invoice.customerId)?.name ?? 'Unknown customer',
       lines: invoice.lines.map((line) => ({
         ...line,
@@ -102,7 +107,8 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
 
   return async function register(app: FastifyInstance): Promise<void> {
     app.get<{ Querystring: InvoiceFilter }>('/api/invoices', { schema: listSchema }, async (request) => {
-      const invoices = store.listInvoices(request.query).map(toView)
+      const day = today()
+      const invoices = store.listInvoices(request.query, day).map((invoice) => toView(invoice, day))
       const sum = invoices.reduce((acc, invoice) => acc + invoice.total, 0)
       return {
         invoices,
@@ -121,7 +127,7 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
       const parsed = parseDateRange(request.query.from, request.query.to)
       if ('error' in parsed) return reply.code(400).send({ error: parsed.error })
       const invoices = invoicesInRange(store.listInvoices(), parsed.range)
-      const csv = buildInvoicesCsv(invoices, (id) => store.getCustomer(id)?.name ?? 'Unknown customer')
+      const csv = buildInvoicesCsv(invoices, (id) => store.getCustomer(id)?.name ?? 'Unknown customer', today())
       return reply
         .header('content-type', 'text/csv; charset=utf-8')
         .header('content-disposition', `attachment; filename="${exportFileName(parsed.range)}"`)

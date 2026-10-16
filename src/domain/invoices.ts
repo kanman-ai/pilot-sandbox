@@ -1,6 +1,6 @@
 /** Pure invoice logic: totals and discounts, filtering, validation and status changes. */
 import { compareIsoDates, isIsoDate } from '../lib/dates.js'
-import type { Invoice, InvoiceFilter, InvoiceLine, NewInvoice } from './types.js'
+import type { Invoice, InvoiceFilter, InvoiceLine, InvoiceViewStatus, NewInvoice } from './types.js'
 
 /** Sum of all lines before any discount, in cents. */
 export function invoiceSubtotal(lines: InvoiceLine[]): number {
@@ -80,10 +80,19 @@ export function setInvoiceDiscount(invoice: Invoice, discountPercent: number | n
   return { ok: true, invoice: updated }
 }
 
-/** Applies the list filters and sorts by issue date, newest first. */
-export function filterInvoices(invoices: Invoice[], filter: InvoiceFilter): Invoice[] {
+/** The status shown on a given day (YYYY-MM-DD): a sent invoice due before that day is overdue. */
+export function invoiceStatusOn(invoice: Pick<Invoice, 'status' | 'dueDate'>, today: string): InvoiceViewStatus {
+  return invoice.status === 'sent' && compareIsoDates(invoice.dueDate, today) < 0 ? 'overdue' : invoice.status
+}
+
+/**
+ * Applies the list filters and sorts by issue date, newest first. With today (YYYY-MM-DD) the status
+ * filter matches the shown status (invoiceStatusOn); without it, the stored status.
+ */
+export function filterInvoices(invoices: Invoice[], filter: InvoiceFilter, today?: string): Invoice[] {
+  const statusOf = (invoice: Invoice) => (today === undefined ? invoice.status : invoiceStatusOn(invoice, today))
   return invoices
-    .filter((invoice) => !filter.status || invoice.status === filter.status)
+    .filter((invoice) => !filter.status || statusOf(invoice) === filter.status)
     .filter((invoice) => !filter.customerId || invoice.customerId === filter.customerId)
     .sort((a, b) => compareIsoDates(b.issueDate, a.issueDate) || b.number.localeCompare(a.number))
 }
@@ -114,7 +123,10 @@ export function validateNewInvoice(input: NewInvoice): string[] {
 
 export type MarkPaidResult = { ok: true; invoice: Invoice } | { ok: false; error: string }
 
-/** Marks a sent invoice as paid on the given date. Drafts and paid invoices are refused. */
+/**
+ * Marks a sent invoice (overdue or not; overdue is stored as sent) as paid on the given date.
+ * Drafts and paid invoices are refused.
+ */
 export function markInvoicePaid(invoice: Invoice, paidDate: string): MarkPaidResult {
   if (invoice.status === 'paid') {
     return { ok: false, error: `Invoice ${invoice.number} is already paid` }

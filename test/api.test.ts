@@ -30,7 +30,10 @@ describe('invoice API', () => {
       totalFormatted: '€19,920.49',
     })
 
-    const sent = await app.inject({ method: 'GET', url: '/api/invoices?status=sent' })
+    // ?status=sent leaves out sent invoices past due (AM-2), so use a day before every seeded due date.
+    const beforeDue = await buildApp({ now: () => new Date(2026, 5, 1, 12, 0) })
+    const sent = await beforeDue.inject({ method: 'GET', url: '/api/invoices?status=sent' })
+    await beforeDue.close()
     expect(sent.json().summary).toEqual({
       count: 5,
       total: '13764.99',
