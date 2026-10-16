@@ -1,4 +1,4 @@
-/** Pure invoice logic: totals and discounts, filtering, validation and status changes. */
+/** Pure invoice logic: totals, discounts and late fees, filtering, validation and status changes. */
 import { compareIsoDates, isIsoDate } from '../lib/dates.js'
 import type { Invoice, InvoiceFilter, InvoiceLine, InvoiceViewStatus, NewInvoice } from './types.js'
 
@@ -22,6 +22,18 @@ export function discountAmount(subtotal: number, discountPercent?: number | null
 export function invoiceTotal(lines: InvoiceLine[], discountPercent?: number | null): number {
   const subtotal = invoiceSubtotal(lines)
   return subtotal - discountAmount(subtotal, discountPercent)
+}
+
+/** One-time late fee on an overdue invoice, as a percent of its (discounted) total. */
+export const LATE_FEE_PERCENT = 5
+
+/**
+ * Late fee in cents for an invoice with the given total and shown status (invoiceStatusOn):
+ * total x LATE_FEE_PERCENT / 100, rounded half-up to the cent like the discount, when overdue;
+ * 0 otherwise. Applied once: it does not grow with the days overdue.
+ */
+export function lateFeeAmount(total: number, status: InvoiceViewStatus): number {
+  return status === 'overdue' ? discountAmount(total, LATE_FEE_PERCENT) : 0
 }
 
 export interface InvoiceAmounts {

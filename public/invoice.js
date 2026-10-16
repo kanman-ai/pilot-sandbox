@@ -1,5 +1,6 @@
 // Invoice detail page. Amounts (total, subtotal, discount, unit prices) come preformatted from the API
-// (shared formatter). The total is the amount payable, after any discount.
+// (shared formatter). The total is the amount payable, after any discount; an overdue invoice adds a
+// one-time late fee, giving the total due.
 
 const id = new URLSearchParams(location.search).get('id')
 const url = `/api/invoices/${encodeURIComponent(id ?? '')}`
@@ -35,6 +36,7 @@ function render(invoice) {
   document.getElementById('invoice-paid').hidden = !invoice.paidDate
   renderDiscount(invoice)
   setText('invoice-total', invoice.totalFormatted)
+  renderLateFee(invoice)
   // Overdue invoices are sent invoices past their due date, so they can be marked as paid too.
   markPaid.hidden = invoice.status !== 'sent' && invoice.status !== 'overdue'
   document.getElementById('line-rows').replaceChildren(
@@ -63,6 +65,16 @@ function renderDiscount(invoice) {
   setText('invoice-discount', hasDiscount ? `-${invoice.discountAmountFormatted}` : '')
   for (const elementId of ['invoice-subtotal-label', 'invoice-subtotal', 'invoice-discount-label', 'invoice-discount']) {
     document.getElementById(elementId).hidden = !hasDiscount
+  }
+}
+
+// Shows the Late fee and Total due lines only when the invoice has a late fee (it is overdue).
+function renderLateFee(invoice) {
+  const hasLateFee = invoice.lateFee > 0
+  setText('invoice-late-fee', hasLateFee ? invoice.lateFeeFormatted : '')
+  setText('invoice-total-due', hasLateFee ? invoice.totalDueFormatted : '')
+  for (const elementId of ['invoice-late-fee-label', 'invoice-late-fee', 'invoice-total-due-label', 'invoice-total-due']) {
+    document.getElementById(elementId).hidden = !hasLateFee
   }
 }
 
