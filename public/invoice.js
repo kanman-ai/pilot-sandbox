@@ -1,4 +1,5 @@
-// Invoice detail page. The total and unit prices come preformatted from the API (shared formatter).
+// Invoice detail page. Amounts (total, subtotal, discount, unit prices) come preformatted from the API
+// (shared formatter). The total is the amount payable, after any discount.
 
 const id = new URLSearchParams(location.search).get('id')
 const url = `/api/invoices/${encodeURIComponent(id ?? '')}`
@@ -32,6 +33,7 @@ function render(invoice) {
   setText('invoice-paid', invoice.paidDate ?? '')
   document.getElementById('invoice-paid-label').hidden = !invoice.paidDate
   document.getElementById('invoice-paid').hidden = !invoice.paidDate
+  renderDiscount(invoice)
   setText('invoice-total', invoice.totalFormatted)
   markPaid.hidden = invoice.status !== 'sent'
   document.getElementById('line-rows').replaceChildren(
@@ -50,6 +52,17 @@ function render(invoice) {
       return row
     }),
   )
+}
+
+// Shows the Subtotal and Discount lines only when the invoice has a discount.
+function renderDiscount(invoice) {
+  const hasDiscount = invoice.discountPercent !== null && invoice.discountPercent !== undefined
+  setText('invoice-subtotal', hasDiscount ? invoice.subtotalFormatted : '')
+  setText('invoice-discount-label', hasDiscount ? `Discount (${invoice.discountPercent}%)` : 'Discount')
+  setText('invoice-discount', hasDiscount ? `-${invoice.discountAmountFormatted}` : '')
+  for (const elementId of ['invoice-subtotal-label', 'invoice-subtotal', 'invoice-discount-label', 'invoice-discount']) {
+    document.getElementById(elementId).hidden = !hasDiscount
+  }
 }
 
 function showError(message) {

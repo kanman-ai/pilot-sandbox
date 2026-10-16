@@ -29,6 +29,8 @@ export interface Invoice {
   status: InvoiceStatus
   /** ISO date, YYYY-MM-DD. Set when the invoice is marked as paid. */
   paidDate?: string
+  /** Optional discount on the whole invoice, 0 to 100 with at most two decimals. Absent means none. */
+  discountPercent?: number
   lines: InvoiceLine[]
 }
 
@@ -37,6 +39,7 @@ export interface NewInvoice {
   issueDate: string
   dueDate: string
   currency?: string
+  discountPercent?: number
   lines: InvoiceLine[]
 }
 
