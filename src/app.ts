@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { InvoiceStore } from './data/store.js'
+import { healthRoutes } from './routes/health.js'
 import { invoiceRoutes } from './routes/invoices.js'
 
 export interface AppOptions {
@@ -19,6 +20,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
   await app.register(fastifyStatic, {
     root: fileURLToPath(new URL('../public', import.meta.url)),
   })
+  await app.register(healthRoutes())
   await app.register(invoiceRoutes(store, { now: options.now }))
 
   return app
