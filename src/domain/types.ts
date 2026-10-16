@@ -39,6 +39,8 @@ export interface Invoice {
   paidDate?: string
   /** Optional discount on the whole invoice, 0 to 100 with at most two decimals. Absent means none. */
   discountPercent?: number
+  /** ISO timestamp of the last payment reminder. Absent means none was sent. */
+  lastReminderSentAt?: string
   lines: InvoiceLine[]
 }
 

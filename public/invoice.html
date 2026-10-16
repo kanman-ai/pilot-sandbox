@@ -22,7 +22,11 @@
         <dt id="invoice-late-fee-label" hidden>Late fee</dt><dd id="invoice-late-fee" hidden></dd>
         <dt id="invoice-total-due-label" hidden>Total due</dt><dd id="invoice-total-due" hidden></dd>
       </dl>
-      <p><button type="button" id="mark-paid" hidden>Mark as paid</button></p>
+      <p>
+        <button type="button" id="mark-paid" hidden>Mark as paid</button>
+        <button type="button" id="send-reminder" hidden>Send reminder</button>
+      </p>
+      <p id="reminder-sent" hidden></p>
       <table aria-label="Invoice lines">
         <thead>
           <tr>

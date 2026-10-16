@@ -1,4 +1,7 @@
-/** Invoice API: list, read, create, set the discount, export as CSV (all or by date range) and mark as paid. */
+/**
+ * Invoice API: list, read, create, set the discount, export as CSV (all or by date range), mark as paid
+ * and send a reminder.
+ */
 import type { FastifyInstance } from 'fastify'
 import type { InvoiceStore } from '../data/store.js'
 import {
@@ -13,6 +16,7 @@ import {
   invoiceStatusOn,
   lateFeeAmount,
   markInvoicePaid,
+  sendInvoiceReminder,
   setInvoiceDiscount,
   validateDiscountPercent,
   validateNewInvoice,
@@ -77,7 +81,7 @@ const listSchema = {
 } as const
 
 export interface InvoiceRouteOptions {
-  /** Clock used for dates like paidDate and for "today" in the overdue status. Tests pass a fixed one. */
+  /** Clock used for paidDate, lastReminderSentAt and "today" in the overdue status. Tests pass a fixed one. */
   now?: () => Date
 }
 
@@ -92,6 +96,7 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
    * discountPercent is always present: a number, or null when the invoice has no discount.
    * total is the amount payable, after the discount. lateFee is the one-time late fee of an overdue
    * invoice (0 otherwise) and totalDue is total + lateFee.
+   * lastReminderSentAt is always present: an ISO timestamp, or null when no reminder was sent.
    */
   function toView(invoice: Invoice, day = today()) {
     const { subtotal, discountPercent, discountAmount, total } = invoiceAmounts(invoice)
@@ -116,6 +121,7 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
       lateFeeFormatted: formatMoney(lateFee, invoice.currency),
       totalDue: total + lateFee,
       totalDueFormatted: formatMoney(total + lateFee, invoice.currency),
+      lastReminderSentAt: invoice.lastReminderSentAt ?? null,
     }
   }
 
@@ -195,6 +201,16 @@ export function invoiceRoutes(store: InvoiceStore, options: InvoiceRouteOptions 
       const invoice = store.getInvoice(request.params.id)
       if (!invoice) return reply.code(404).send(invoiceNotFound(request.params.id))
       const result = markInvoicePaid(invoice, toIsoDate(now()))
+      if (!result.ok) return reply.code(409).send({ error: result.error })
+      store.updateInvoice(result.invoice)
+      return toView(result.invoice)
+    })
+
+    app.post<{ Params: { id: string } }>('/api/invoices/:id/send-reminder', async (request, reply) => {
+      const invoice = store.getInvoice(request.params.id)
+      if (!invoice) return reply.code(404).send(invoiceNotFound(request.params.id))
+      const sentAt = now()
+      const result = sendInvoiceReminder(invoice, toIsoDate(sentAt), sentAt.toISOString())
       if (!result.ok) return reply.code(409).send({ error: result.error })
       store.updateInvoice(result.invoice)
       return toView(result.invoice)
